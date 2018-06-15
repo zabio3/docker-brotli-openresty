@@ -1,12 +1,12 @@
-# Dockerfile - Ubuntu Xenial
-# https://github.com/openresty/docker-openresty
-
 ARG RESTY_IMAGE_BASE="ubuntu"
 ARG RESTY_IMAGE_TAG="xenial"
 
 FROM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG}
 
-LABEL maintainer="Evan Wies <evan@neomantra.net>"
+LABEL maintainer="zabio3 <ttmsk1192@gmail.com>"
+
+ENV NGX_BROTLI_COMMIT="bfd2885b2da4d763fed18f49216bb935223cd34b" \
+    PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
 # Docker Build Arguments
 ARG RESTY_VERSION="1.13.6.2"
@@ -43,6 +43,7 @@ ARG RESTY_CONFIG_OPTIONS="\
     --with-stream \
     --with-stream_ssl_module \
     --with-threads \
+    --add-module=/usr/src/ngx_brotli \
     "
 ARG RESTY_CONFIG_OPTIONS_MORE=""
 
@@ -78,6 +79,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         perl \
         unzip \
         zlib1g-dev \
+        git \
+        autoconf \
+        libtool \
+        automake \
     && cd /tmp \
     && curl -fSL https://www.openssl.org/source/openssl-${RESTY_OPENSSL_VERSION}.tar.gz -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
     && tar xzf openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
@@ -85,6 +90,16 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && curl -fSL https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
+    && cd /usr/local/lib \
+    && git clone https://github.com/bagder/libbrotli \
+    && cd /usr/local/lib/libbrotli \
+    && ./autogen.sh \
+    && ./configure \
+    && make install \
+    && cd /usr/src \
+    && git clone --recursive https://github.com/google/ngx_brotli.git \
+    && cd ngx_brotli \
+    && git checkout -b $NGX_BROTLI_COMMIT $NGX_BROTLI_COMMIT \
     && cd /tmp/openresty-${RESTY_VERSION} \
     && ./configure -j${RESTY_J} ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} \
     && make -j${RESTY_J} \
@@ -111,8 +126,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && ln -sf /dev/stdout /usr/local/openresty/nginx/logs/access.log \
     && ln -sf /dev/stderr /usr/local/openresty/nginx/logs/error.log
 
-# Add additional binaries into PATH for convenience
-ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
+RUN groupadd nginx \
+    && useradd -g nginx nginx \
+    && usermod -s /bin/false nginx \
+    && echo 'nginx ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # Copy nginx configuration files
 COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
