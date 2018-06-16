@@ -56,14 +56,6 @@ Usage
 
 If you are happy with the build defaults, then you can use the openresty image from the [Docker Hub](https://hub.docker.com/r/openresty/openresty/).  The image tags available there are listed at the top of this README.
 
-```
-docker run [options] openresty/openresty:stetch-fat
-```
-
-*[options]* would be things like -p to map ports, -v to map volumes, and -d to daemonize.
-
-`docker-openresty` symlinks `/usr/local/openresty/nginx/logs/access.log` and `error.log` to `/dev/stdout` and `/dev/stderr` respectively, so that Docker logging works correctly.  If you change the log paths in your `nginx.conf`, you should symlink those paths as well. This is not possible with the `windows` image.
-
 
 Building (from source)
 ======================
